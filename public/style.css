@@ -1,0 +1,127 @@
+body {
+    font-family: sans-serif;
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+h1 {
+    font-size: 22px;
+    margin-bottom: 20px;
+}
+h2 {
+    font-size: 18px;
+    margin-bottom: 14px;
+}
+h3 {
+    font-size: 15px;
+    margin: 14px 0 8px;
+}
+
+input {
+    border: 1px solid #ccc;
+    padding: 5px 8px;
+    font-size: 14px;
+}
+
+button {
+    padding: 5px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 6px;
+}
+button:disabled {
+    opacity: 0.4; 
+    cursor: default;
+}
+
+ul {
+    padding-left: 18px;
+     margin: 0;
+}
+li {
+    padding: 2px 0;
+    font-size: 14px;
+}
+
+.error {
+    color: red;
+    font-size: 13px;
+    margin-top: 6px;
+}
+.muted {
+    color: #888;
+    font-size: 13px;
+}
+.row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+hr {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 16px 0; 
+}
+
+/* Word grid */
+table {
+    border-collapse: collapse;
+    margin-top: 6px; 
+}
+td {
+    border: 1px solid #ccc;
+    padding: 8px 14px;
+    text-align: center;
+    font-size: 14px;
+    min-width: 80px;
+}
+td.secret {
+    background: #fff3cd;
+    font-weight: bold;
+}
+
+/* Clue list */
+.clue-row {
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    display: flex;
+    gap: 10px;
+}
+.clue-row:last-child {
+    border-bottom: none;
+}
+
+/* Vote buttons */
+.vote-row { 
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.vote-btn {
+    padding: 5px 14px;
+}
+.vote-btn.selected {
+    background: #000; 
+    color: #fff;
+}
+
+/* Topic buttons */
+.topic-btn {
+    margin: 3px;
+}
+.topic-btn.selected {
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+/* Page sections */
+section {
+    display: none;
+}
+section.active {
+    display: block;
+}

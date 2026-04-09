@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Online Chameleon</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+
+<section id="s-home" class="active">
+  <h1>Online Chameleon</h1>
+
+  <div class="row">
+    <label>Name:</label>
+    <input id="home-name" placeholder="Your name" />
+  </div>
+  <button onclick="createLobby()">Create Lobby</button>
+
+  <hr>
+
+  <div class="row">
+    <label>Room code:</label>
+    <input id="join-code" placeholder="e.g. ABC123" style="width:100px" />
+    <button onclick="joinLobby()">Join</button>
+  </div>
+
+  <p id="home-err" class="error"></p>
+</section>
+
+<section id="s-lobby">
+  <h2>Lobby Code: <span id="lobby-code"></span></h2>
+
+  <h3>Players</h3>
+  <ul id="lobby-players"></ul>
+
+  <h3>Topic</h3>
+  <div id="topic-btns"></div>
+
+  <br>
+  <button onclick="startGame()">Start Game</button>
+  <p id="lobby-err" class="error"></p>
+</section>
+
+<section id="s-reveal">
+  <h2>Your Role</h2>
+  <p id="reveal-role" style="font-size:16px; margin-bottom:8px;"></p>
+  <p id="reveal-word" style="font-size:15px; margin-bottom:6px;"></p>
+  <p id="reveal-topic" class="muted"></p>
+  <br>
+  <button onclick="goGame()">Ready</button>
+</section>
+
+<section id="s-game">
+  <h2>Topic: <span id="game-topic"></span></h2>
+  <p id="game-info" style="font-size:14px; margin-bottom:12px;"></p>
+
+  <table id="word-table"></table>
+
+  <div id="clue-area" style="margin-top:16px;">
+    <h3>Your Clue</h3>
+    <div class="row">
+      <input id="clue-input" placeholder="One word..." maxlength="24"
+             onkeydown="if(event.key==='Enter') submitClue()" />
+      <button onclick="submitClue()">Submit</button>
+    </div>
+    <p id="clue-err" class="error"></p>
+  </div>
+
+  <div id="clue-list" style="margin-top:12px;"></div>
+  <br>
+  <button id="proceed-btn" onclick="goVoting()" style="display:none">Proceed to Vote</button>
+</section>
+
+<section id="s-voting">
+  <h2>Vote for the Chameleon</h2>
+  <p class="muted">Click a player to accuse them, then submit.</p>
+  <br>
+  <div id="vote-players"></div>
+  <button onclick="submitVote()">Submit Vote</button>
+  <p id="vote-err" class="error"></p>
+</section>
+
+<section id="s-results">
+  <h2 id="result-banner"></h2>
+  <p id="result-chameleon" style="font-size:15px;"></p>
+  <p id="result-word"      style="font-size:15px;"></p>
+  <p id="result-outcome"   style="font-size:15px;"></p>
+
+  <h3>Votes</h3>
+  <ul id="result-votes"></ul>
+  <br>
+  <button onclick="playAgain()">Play Again</button>
+  <button onclick="goHome()">Home</button>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
