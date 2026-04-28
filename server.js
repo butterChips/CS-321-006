@@ -53,6 +53,54 @@ io.on('connection', socket => {
     }
   });
 
+  /*
+  The method does the following:
+  - determines if the room is initialized
+  - switches the phase of the room to the voting phase
+  - creates a collection of votes that will store who each person 
+    is voting for
+  - finally emits 'votingStarted' to start votes
+  */
+  socket.on('goVoting', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.hostId != socket.id) return;
+    room.phase = 'voting';
+    room.votes = {};
+    io.to(code).emit('votingStarted', { players: room.players });
+  });
+
+  /*
+
+
+  */
+  socket.on('submitVote', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.hostId != socket.id) return;
+    if (!room.players.find(p => p.id === targetId)) return;
+    room.votes[socket.id] = targetId;
+
+    if (Object.keys(room.votes).length === room.players.length) {
+      const tally = {};
+      for (const v of Object.values(room.votes)) tally[v] = (tally[v] || 0) + 1;
+      const accused = Object.entries(tally).sort((a,b) => b[1] - a[1])[0][0];
+      room.phase = 'results';
+
+      const voteList = room.players.map( p => ({
+        voterName:   p.name,
+        targetName:  room.players.find(x => x.id === room.votes[p.id])?.name || '?',
+      }));
+
+      io.to(code).emit('results', {
+        chameleonId: room.chameleonId,
+        chameleonName: room.players.find(p => p.id === room.chameleon)?.name,
+        secretWord: room.secretWord,
+        chameleonCaught: accused === room.chameleonId,
+        voteList,
+      });
+    }
+  });
+
+  
   
 });
 
