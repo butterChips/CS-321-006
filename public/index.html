@@ -2,98 +2,159 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Online Chameleon</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
+<div class="theme-toggle-wrap">
+  <label class="theme-toggle" for="theme-switch">
+    <span class="theme-label">Light</span>
+    <input id="theme-switch" type="checkbox" aria-label="Toggle dark mode" />
+    <span class="theme-slider" aria-hidden="true"></span>
+    <span class="theme-label">Dark</span>
+  </label>
+</div>
 
-<section id="s-home" class="active">
-  <h1>Online Chameleon</h1>
+<div class="layout">
 
-  <div class="row">
-    <label>Name:</label>
-    <input id="home-name" placeholder="Your name" />
+  <div class="main">
+
+    <section id="s-home" class="active">
+      <h1>Online Chameleon</h1>
+
+      <div class="row">
+        <label>Name:</label>
+        <input id="home-name" placeholder="Your name" />
+      </div>
+      <button onclick="createLobby()">Create Lobby</button>
+
+      <hr>
+
+      <div class="row">
+        <label>Room code:</label>
+        <input id="join-code" placeholder="e.g. ABC123" class="code-input" />
+        <button onclick="joinLobby()">Join</button>
+      </div>
+
+      <p id="home-err" class="error"></p>
+    </section>
+
+    <section id="s-lobby">
+      <h2>Lobby Code: <span id="lobby-code" class="room-code"></span></h2>
+
+      <h3>Players</h3>
+      <ul id="lobby-players"></ul>
+
+      <h3>Topic</h3>
+      <div id="topic-btns"></div>
+
+      <br>
+      <button id="lobby-start" onclick="startGame()" style="display:none">Start Game</button>
+      <p id="lobby-waiting" class="muted" style="display:none">Waiting for host to start...</p>
+      <p id="lobby-err" class="error"></p>
+    </section>
+
+    <section id="s-reveal">
+      <h2>Your Role</h2>
+      <p id="reveal-role" class="role-text"></p>
+      <p id="reveal-word" class="word-text"></p>
+      <p id="reveal-topic" class="muted"></p>
+      <br>
+      <button onclick="goGame()">I'm Ready</button>
+    </section>
+
+    <section id="s-waiting">
+      <h2>Waiting for all players...</h2>
+      <p class="muted">Everyone must click "I'm Ready" before the game starts.</p>
+    </section>
+
+    <section id="s-game">
+      <h2>Topic: <span id="game-topic"></span></h2>
+      <p id="game-info" class="muted"></p>
+
+      <table id="word-table"></table>
+
+      <div id="clue-area" class="clue-area">
+        <h3>Your Clue</h3>
+        <div class="row">
+          <input id="clue-input" placeholder="One word..." maxlength="24"
+                 onkeydown="if(event.key==='Enter') submitClue()" />
+          <button onclick="submitClue()">Submit</button>
+        </div>
+        <p id="clue-err" class="error"></p>
+      </div>
+
+      <div id="clue-list" class="clue-list"></div>
+      <br>
+      <button id="proceed-btn" onclick="goVoting()" style="display:none">Proceed to Vote</button>
+      <p id="clue-waiting" class="muted" style="display:none">Waiting for host to start the vote...</p>
+    </section>
+
+    <section id="s-voting">
+      <h2>Vote for the Chameleon</h2>
+      <p class="muted">Click a player to accuse them, then submit.</p>
+      <br>
+      <div id="vote-players"></div>
+      <button onclick="submitVote()">Submit Vote</button>
+      <p id="vote-err" class="error"></p>
+    </section>
+
+    <section id="s-results">
+      <h2 id="result-banner"></h2>
+      <p id="result-chameleon"></p>
+      <p id="result-word"></p>
+      <p id="result-outcome" class="bold"></p>
+
+      <h3>Votes</h3>
+      <ul id="result-votes"></ul>
+      <br>
+      <button id="play-again-btn" onclick="playAgain()" style="display:none">Play Again</button>
+      <button onclick="goHome()">Home</button>
+    </section>
+
   </div>
-  <button onclick="createLobby()">Create Lobby</button>
 
-  <hr>
+  <aside class="rules">
+    <h3>How to Play</h3>
+    <ol>
+      <li>The host picks a topic and starts the game.</li>
+      <li>Every player sees a 4x4 word grid. One word is the secret word.</li>
+      <li>One player is secretly the Chameleon and does not know the secret word.</li>
+      <li>Each player gives a one-word clue related to the secret word.</li>
+      <li>The Chameleon must bluff a convincing clue without knowing the word.</li>
+      <li>After all clues are given, players vote on who they think the Chameleon is.</li>
+      <li>If the Chameleon gets the most votes, the players win.</li>
+      <li>If the Chameleon avoids being caught, the Chameleon wins.</li>
+    </ol>
+  </aside>
 
-  <div class="row">
-    <label>Room code:</label>
-    <input id="join-code" placeholder="e.g. ABC123" style="width:100px" />
-    <button onclick="joinLobby()">Join</button>
-  </div>
+</div>
 
-  <p id="home-err" class="error"></p>
-</section>
+<script>
+  (function () {
+    var savedTheme = localStorage.getItem('chameleon-theme') || 'light';
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var theme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : (prefersDark ? 'dark' : 'light');
 
-<section id="s-lobby">
-  <h2>Lobby Code: <span id="lobby-code"></span></h2>
+    document.body.setAttribute('data-theme', theme);
 
-  <h3>Players</h3>
-  <ul id="lobby-players"></ul>
+    window.addEventListener('DOMContentLoaded', function () {
+      var switchEl = document.getElementById('theme-switch');
+      if (!switchEl) return;
 
-  <h3>Topic</h3>
-  <div id="topic-btns"></div>
+      switchEl.checked = theme === 'dark';
+      switchEl.addEventListener('change', function () {
+        var nextTheme = switchEl.checked ? 'dark' : 'light';
+        document.body.setAttribute('data-theme', nextTheme);
+        localStorage.setItem('chameleon-theme', nextTheme);
+      });
+    });
+  })();
+</script>
 
-  <br>
-  <button onclick="startGame()">Start Game</button>
-  <p id="lobby-err" class="error"></p>
-</section>
-
-<section id="s-reveal">
-  <h2>Your Role</h2>
-  <p id="reveal-role" style="font-size:16px; margin-bottom:8px;"></p>
-  <p id="reveal-word" style="font-size:15px; margin-bottom:6px;"></p>
-  <p id="reveal-topic" class="muted"></p>
-  <br>
-  <button onclick="goGame()">Ready</button>
-</section>
-
-<section id="s-game">
-  <h2>Topic: <span id="game-topic"></span></h2>
-  <p id="game-info" style="font-size:14px; margin-bottom:12px;"></p>
-
-  <table id="word-table"></table>
-
-  <div id="clue-area" style="margin-top:16px;">
-    <h3>Your Clue</h3>
-    <div class="row">
-      <input id="clue-input" placeholder="One word..." maxlength="24"
-             onkeydown="if(event.key==='Enter') submitClue()" />
-      <button onclick="submitClue()">Submit</button>
-    </div>
-    <p id="clue-err" class="error"></p>
-  </div>
-
-  <div id="clue-list" style="margin-top:12px;"></div>
-  <br>
-  <button id="proceed-btn" onclick="goVoting()" style="display:none">Proceed to Vote</button>
-</section>
-
-<section id="s-voting">
-  <h2>Vote for the Chameleon</h2>
-  <p class="muted">Click a player to accuse them, then submit.</p>
-  <br>
-  <div id="vote-players"></div>
-  <button onclick="submitVote()">Submit Vote</button>
-  <p id="vote-err" class="error"></p>
-</section>
-
-<section id="s-results">
-  <h2 id="result-banner"></h2>
-  <p id="result-chameleon" style="font-size:15px;"></p>
-  <p id="result-word"      style="font-size:15px;"></p>
-  <p id="result-outcome"   style="font-size:15px;"></p>
-
-  <h3>Votes</h3>
-  <ul id="result-votes"></ul>
-  <br>
-  <button onclick="playAgain()">Play Again</button>
-  <button onclick="goHome()">Home</button>
-</section>
-
+<script src="/socket.io/socket.io.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
