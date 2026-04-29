@@ -14,7 +14,7 @@ app.listen(PORT, () => console.log(`Running on http://localhost:${PORT}`));
 const TOPICS = Object.keys(require('./topic-words.json'));
 const CODE_LENGTH = 6;
 
-function shuffer(arr) {
+function shuffler(arr) {
     const a = [...arr];
     for (let b = a.length - 1; b > 0; b--) {
         const c = Math.floor(Math.random() * (b + 1));
@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
             hostId: socket.id,
             phase: 'lobby',
             topic: TOPICS[0],
-            players: [{ id: socket.id, name: trimmed }],
+            players: [{ id: socket.id, name: name.trim() }],
             readyIds: new Set(),
             wordGrid: [],
             secretWord: '',
@@ -83,6 +83,7 @@ io.on('connection', (socket) => {
             topic: rooms[code].topic
         });
     });
+
     socket.on('joinRoom', ({ name, code }) => {
         if (!name || !name.trim()) {
             return socket.emit('error', 'Enter your name.');
@@ -145,6 +146,21 @@ io.on('connection', (socket) => {
         }
         room.topic = topic;
         io.to(code).emit('topicSelected', { topic });
+    });
+
+    socket.on('playerReady', ({ code }) => {
+        const room = rooms[code];
+        if (!room) {
+            return;
+        }
+
+        room.readyIds.add(socket.id);
+
+        if (room.readyIds.size === room.players.length) {
+            room.phase = 'game';
+            room.idReadyIds.clear();
+            io.to(code).emit('allPlayersReady');
+        }
     });
 
     /*
@@ -278,13 +294,14 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        for (const code in Object.keys(rooms)) {
+        for (const code of Object.keys(rooms)) {
             const room = rooms[code];
             // If the player was not in this room then skip
             const playerIndex = room.players.findIndex((p) => p.id === socket.id);
             if (playerIndex !== -1) {
-                room.players.splice(playerIndex, 1);
+                continue;
             }
+            room.players.splice(playerIndex, 1);
 
             // If no players are left then delete the room
             if (room.players.length === 0) {
