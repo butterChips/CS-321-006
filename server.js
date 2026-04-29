@@ -70,8 +70,13 @@ io.on('connection', socket => {
   });
 
   /*
-
-
+  - checks room exists
+  - validates that the target player exists
+  - stores the vote
+  - once all players votes, tallies votes
+  - finds the accused player through sorting
+  - builds voteList
+  - broadcasts the results event to the whole room
   */
   socket.on('submitVote', ({ code }) => {
     const room = rooms[code];
@@ -90,6 +95,9 @@ io.on('connection', socket => {
         targetName:  room.players.find(x => x.id === room.votes[p.id])?.name || '?',
       }));
 
+      /*
+      This handles the broadcasting of the results to the room
+      */
       io.to(code).emit('results', {
         chameleonId: room.chameleonId,
         chameleonName: room.players.find(p => p.id === room.chameleon)?.name,
@@ -100,7 +108,28 @@ io.on('connection', socket => {
     }
   });
 
-  
+  /*
+  The method does the following:
+  - checks if the player is the host
+  - resets the round-specific data
+  - keeps the room and players
+  - sends everyone back to the lobby state with backToLobby
+  */
+  socket.on('playAgain', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.hostId !== socket.id) return;
+    room.phase = 'lobby'; 
+    room.clues = []; 
+    room.votes = {};
+    room.chameleonId = null; 
+    room.wordGrid = []; 
+    room.secretWord = '';
+    io.to(code).emit('backToLobby', { 
+      players: room.players, 
+      topics: TOPICS, 
+      topic: room.topic 
+    });
+  });
   
 });
 
