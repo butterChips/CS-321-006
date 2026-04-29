@@ -32,8 +32,58 @@ function createCode() {
 }
 
 const rooms = {};
+// If we were using TS, room interface would be:
+// Side note: The word room no longer looks real after staring at it for so long.
+/*
+interface Room {
+    code: string;
+    hostId: string;
+    phase: 'lobby' | 'game' | 'voting' | 'results';
+    topic: string;
+    players: { id: string; name: string }[];
+    readyIds: Set<string>;
+    wordGrid: string[][];
+    secretWord: string;
+    chameleonId: string | null;
+    clues: { playerId: string; playerName: string; clue: string }[];
+    votes: { [voterId: string]: targetId };
+}
+*/
 
 io.on('connection', (socket) => {
+    socket.on('createRoom', ({ name }) => {
+        if (!name || !name.trim()) {
+            return socket.emit('error', 'Enter your name.');
+        }
+        let code;
+        // Ensure there is a unique code for the room
+        do {
+            code = createCode();
+        } while (rooms[code]);
+
+        rooms[code] = {
+            code,
+            hostId: socket.id,
+            phase: 'lobby',
+            topic: TOPICS[0],
+            players: [{ id: socket.id, name: trimmed }],
+            readyIds: new Set(),
+            wordGrid: [],
+            secretWord: '',
+            chameleonId: null,
+            clues: [],
+            votes: {}
+        };
+
+        socket.join(code);
+        socket.emit('roomCreated', {
+            code,
+            players: rooms[code].players,
+            topics: TOPICS,
+            topic: rooms[code].topic
+        });
+    });
+
     /*
   The method does the following:
   - verify the room exists
