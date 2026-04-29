@@ -83,6 +83,28 @@ io.on('connection', (socket) => {
             topic: rooms[code].topic
         });
     });
+    socket.on('joinRoom', ({ name, code }) => {
+        if (!name || !name.trim()) {
+            return socket.emit('error', 'Enter your name.');
+        }
+        if (!code || !code.trim()) {
+            return socket.emit('error', 'Enter your room code.');
+        }
+        const room = rooms[code];
+        if (!room) {
+            return socket.emit('error', 'Room not found.');
+        }
+        if (room.players.some((p) => p.id === socket.id)) {
+            return socket.emit('error', 'You are already in this room.');
+        }
+        if (room.phase !== 'lobby') {
+            return socket.emit('error', 'Game in progress.');
+        }
+        room.players.push({ id: socket.id, name: name.trim() });
+        socket.join(code);
+        // https://socket.io/docs/v4/server-api/#servertoroom
+        io.to(code).emit('playerJoined', { players: room.players });
+    });
 
     /*
   The method does the following:
