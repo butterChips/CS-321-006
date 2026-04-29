@@ -106,6 +106,47 @@ io.on('connection', (socket) => {
         io.to(code).emit('playerJoined', { players: room.players });
     });
 
+    socket.on('startGame', ({ code }) => {
+        const room = rooms[code];
+        if (!room) {
+            return socket.emit('error', 'Room not found.');
+        }
+        if (room.hostId !== socket.id) {
+            return socket.emit('error', 'Only the host can start the game.');
+        }
+        if (room.players.length < 3) {
+            return socket.emit('error', 'At least 3 players required.');
+        }
+
+        const words = shuffler(require('./topic-words.json')[room.topic]);
+        room.wordGrid = words.slice(0, 16);
+        room.secretWord = room.wordGrid[Math.floor(Math.random() * room.wordGrid.length)];
+        room.chameleonId = room.players[Math.floor(Math.random() * room.players.length)].id;
+        room.clues = [];
+        room.votes = {};
+        room.phase = 'reveal';
+
+        room.players.forEach(({ id }) => {
+            const isChameleon = id === room.chameleonId;
+            io.to(id).emit('gameStarted', {
+                topic: room.topic,
+                wordGrid: room.wordGrid,
+                secretWord: isChameleon ? null : room.secretWord,
+                isChameleon,
+                players: room.players
+            });
+        });
+    });
+
+    socket.on('selectTopic', ({ code, topic }) => {
+        const room = rooms[code];
+        if (!room || room.hostId !== socket.id || !TOPICS.includes(topic)) {
+            return;
+        }
+        room.topic = topic;
+        io.to(code).emit('topicSelected', { topic });
+    });
+
     /*
   The method does the following:
   - verify the room exists
@@ -234,5 +275,31 @@ io.on('connection', (socket) => {
             topics: TOPICS,
             topic: room.topic
         });
+    });
+
+    socket.on('disconnect', () => {
+        for (const code in Object.keys(rooms)) {
+            const room = rooms[code];
+            // If the player was not in this room then skip
+            const playerIndex = room.players.findIndex((p) => p.id === socket.id);
+            if (playerIndex !== -1) {
+                room.players.splice(playerIndex, 1);
+            }
+
+            // If no players are left then delete the room
+            if (room.players.length === 0) {
+                delete rooms[code];
+                break;
+            }
+
+            // If the host left then assign a new host
+            if (room.hostId === socket.id) {
+                room.hostId = room.players[0].id;
+                io.to(room.hostId).emit('hostChanged');
+            }
+            // Broadcast that the player left
+            io.to(code).emit('playerLeft', { players: room.players, leftId: socket.id });
+            break;
+        }
     });
 });
