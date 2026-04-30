@@ -9,7 +9,6 @@ const server = http.createServer(app);
 const io = new Server(server);
 const PORT = 3000;
 app.use(express.static(path.join(__dirname, 'public')));
-app.listen(PORT, () => console.log(`Running on http://localhost:${PORT}`));
 
 const TOPICS = Object.keys(require('./topic-words.json'));
 const CODE_LENGTH = 6;
@@ -51,9 +50,9 @@ interface Room {
 */
 
 io.on('connection', (socket) => {
-    socket.on('createRoom', ({ name }) => {
+    socket.on('createLobby', ({ name }) => {
         if (!name || !name.trim()) {
-            return socket.emit('error', 'Enter your name.');
+            return socket.emit('err', 'Enter your name.');
         }
         let code;
         // Ensure there is a unique code for the room
@@ -76,47 +75,59 @@ io.on('connection', (socket) => {
         };
 
         socket.join(code);
-        socket.emit('roomCreated', {
+        socket.emit('joinedLobby', {
             code,
+            playerId: socket.id,
             players: rooms[code].players,
             topics: TOPICS,
-            topic: rooms[code].topic
+            topic: rooms[code].topic,
+            isHost: true
         });
     });
 
-    socket.on('joinRoom', ({ name, code }) => {
+    socket.on('joinLobby', ({ name, code }) => {
         if (!name || !name.trim()) {
-            return socket.emit('error', 'Enter your name.');
+            return socket.emit('err', 'Enter your name.');
         }
         if (!code || !code.trim()) {
-            return socket.emit('error', 'Enter your room code.');
+            return socket.emit('err', 'Enter your room code.');
         }
         const room = rooms[code];
         if (!room) {
-            return socket.emit('error', 'Room not found.');
+            return socket.emit('err', 'Room not found.');
         }
         if (room.players.some((p) => p.id === socket.id)) {
-            return socket.emit('error', 'You are already in this room.');
+            return socket.emit('err', 'You are already in this room.');
         }
         if (room.phase !== 'lobby') {
-            return socket.emit('error', 'Game in progress.');
+            return socket.emit('err', 'Game in progress.');
         }
         room.players.push({ id: socket.id, name: name.trim() });
         socket.join(code);
+
+        socket.emit('joinedLobby', {
+            code,
+            playerId: socket.id,
+            players: room.players,
+            topics: TOPICS,
+            topic: room.topic,
+            isHost: false
+        });
+
         // https://socket.io/docs/v4/server-api/#servertoroom
-        io.to(code).emit('playerJoined', { players: room.players });
+        socket.to(code).emit('playerJoined', { players: room.players });
     });
 
     socket.on('startGame', ({ code }) => {
         const room = rooms[code];
         if (!room) {
-            return socket.emit('error', 'Room not found.');
+            return socket.emit('err', 'Room not found.');
         }
         if (room.hostId !== socket.id) {
-            return socket.emit('error', 'Only the host can start the game.');
+            return socket.emit('err', 'Only the host can start the game.');
         }
         if (room.players.length < 3) {
-            return socket.emit('error', 'At least 3 players required.');
+            return socket.emit('err', 'At least 3 players required.');
         }
 
         const words = shuffler(require('./topic-words.json')[room.topic]);
@@ -145,7 +156,7 @@ io.on('connection', (socket) => {
             return;
         }
         room.topic = topic;
-        io.to(code).emit('topicSelected', { topic });
+        io.to(code).emit('topicChanged', { topic });
     });
 
     socket.on('playerReady', ({ code }) => {
@@ -158,8 +169,8 @@ io.on('connection', (socket) => {
 
         if (room.readyIds.size === room.players.length) {
             room.phase = 'game';
-            room.idReadyIds.clear();
-            io.to(code).emit('allPlayersReady');
+            room.readyIds.clear();
+            io.to(code).emit('allReady');
         }
     });
 
@@ -198,7 +209,7 @@ io.on('connection', (socket) => {
 
         room.clues.push({
             playerId: socket.id,
-            playerName: player.Name,
+            playerName: player.name,
             clue: trimmedClue
         });
 
@@ -234,9 +245,9 @@ io.on('connection', (socket) => {
   - builds voteList
   - broadcasts the results event to the whole room
   */
-    socket.on('submitVote', ({ code }) => {
+    socket.on('submitVote', ({ code, targetId }) => {
         const room = rooms[code];
-        if (!room || room.hostId != socket.id) return;
+        if (!room || room.phase !== 'voting') return;
         if (!room.players.find((p) => p.id === targetId)) return;
         room.votes[socket.id] = targetId;
 
@@ -261,7 +272,7 @@ io.on('connection', (socket) => {
       */
             io.to(code).emit('results', {
                 chameleonId: room.chameleonId,
-                chameleonName: room.players.find((p) => p.id === room.chameleon)
+                chameleonName: room.players.find((p) => p.id === room.chameleonId)
                     ?.name,
                 secretWord: room.secretWord,
                 chameleonCaught: accused === room.chameleonId,
@@ -286,6 +297,7 @@ io.on('connection', (socket) => {
         room.chameleonId = null;
         room.wordGrid = [];
         room.secretWord = '';
+        room.readyIds.clear();
         io.to(code).emit('backToLobby', {
             players: room.players,
             topics: TOPICS,
@@ -298,7 +310,7 @@ io.on('connection', (socket) => {
             const room = rooms[code];
             // If the player was not in this room then skip
             const playerIndex = room.players.findIndex((p) => p.id === socket.id);
-            if (playerIndex !== -1) {
+            if (playerIndex === -1) {
                 continue;
             }
             room.players.splice(playerIndex, 1);
@@ -312,7 +324,7 @@ io.on('connection', (socket) => {
             // If the host left then assign a new host
             if (room.hostId === socket.id) {
                 room.hostId = room.players[0].id;
-                io.to(room.hostId).emit('hostChanged');
+                io.to(room.hostId).emit('youAreHost');
             }
             // Broadcast that the player left
             io.to(code).emit('playerLeft', { players: room.players, leftId: socket.id });
@@ -320,3 +332,5 @@ io.on('connection', (socket) => {
         }
     });
 });
+
+server.listen(PORT, () => console.log(`Running on http://localhost:${PORT}`));
